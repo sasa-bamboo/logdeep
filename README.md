@@ -8,6 +8,11 @@ LogDeep is an open source deeplearning-based log analysis toolkit for automated 
 
 *Note: This repo does not include log parsing，if you need to use it, please check [logparser](https://github.com/logpai/logparser)*
 
+This repository was created based on the following:
+
+- Created by forking [https://github.com/d0ng1ee/logdeep]
+- Integrated LightLog with reference to [https://github.com/Aquariuaa/LightLog]
+
 ## Major features
 
 - Modular Design
@@ -80,3 +85,4 @@ Model = loganomaly(input_size=options['input_size'],
 | DeepLog(unsupervised)| seq |0.9583 | 0.9330 | 0.9454 |
 | LogAnomaly(unsupervised) | seq+quan|0.9690 |0.9825 |0.9757 |
 | RobustLog(supervised)| semantic |0.9216 |0.9586 |0.9397 |
+

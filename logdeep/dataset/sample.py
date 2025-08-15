@@ -146,3 +146,67 @@ def session_window(data_dir, datatype, sample_ratio=1):
     print('Number of sessions({}): {}'.format(data_dir,
                                               len(result_logs['Semantics'])))
     return result_logs, labels
+
+def session_window_PCA_PPA(data_dir, datatype, sample_ratio=1):
+    event2semantic_vec = read_json(data_dir + 'hdfs/event2semantic_vec.json')
+    value = list(event2semantic_vec.values())
+    from sklearn.decomposition import PCA
+    estimator = PCA(n_components=20)
+    pca_result = estimator.fit_transform(value)
+    ppa_result = {}
+    result = pca_result - np.mean(pca_result, axis=0)
+    pca = PCA(n_components=20)
+    pca_result = pca.fit_transform(result)
+    U = pca.components_
+    U = pca.components_
+    for i, x in enumerate(result):
+        for u in U[0:7]:
+            x = x - np.dot(u.transpose(), x) * u
+        ppa_result[str(i)] = list(x)
+
+    result_logs = {}
+    result_logs['Sequentials'] = []
+    result_logs['Quantitatives'] = []
+    result_logs['Semantics'] = []
+    labels = []
+
+    if datatype == 'train':
+        data_dir += 'hdfs/robust_log_train.csv'
+    elif datatype == 'val':
+        data_dir += 'hdfs/robust_log_valid.csv'
+    elif datatype == 'test':
+        data_dir += 'hdfs/robust_log_test.csv'
+
+    train_df = pd.read_csv(data_dir)
+    for i in tqdm(range(len(train_df))):
+        ori_seq = [
+            int(eventid) for eventid in train_df["Sequence"][i].split(' ')
+        ]
+        Sequential_pattern = trp(ori_seq, 50)
+        Semantic_pattern = []
+        for event in Sequential_pattern:
+            if event == 0:
+                Semantic_pattern.append([-1] * 20)
+            else:
+                Semantic_pattern.append(ppa_result[str(event - 1)])
+        Quantitative_pattern = [0] * 29
+        log_counter = Counter(Sequential_pattern)
+
+        for key in log_counter:
+            Quantitative_pattern[key] = log_counter[key]
+
+        Sequential_pattern = np.array(Sequential_pattern)[:, np.newaxis]
+        Quantitative_pattern = np.array(Quantitative_pattern)[:, np.newaxis]
+        result_logs['Sequentials'].append(Sequential_pattern)
+        result_logs['Quantitatives'].append(Quantitative_pattern)
+        result_logs['Semantics'].append(Semantic_pattern)
+        labels.append(int(train_df["label"][i]))
+
+    if sample_ratio != 1:
+        result_logs, labels = down_sample(result_logs, labels, sample_ratio)
+
+    # result_logs, labels = up_sample(result_logs, labels)
+
+    print('Number of sessions({}): {}'.format(data_dir,
+                                              len(result_logs['Semantics'])))
+    return result_logs, labels

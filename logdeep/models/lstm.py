@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-
 class deeplog(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, num_keys):
         super(deeplog, self).__init__()
@@ -103,3 +102,43 @@ class robustlog(nn.Module):
         out, _ = self.lstm(input0, (h0, c0))
         out = self.fc(out[:, -1, :])
         return out
+
+class ResBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, dilation):
+        super().__init__()
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size, padding=(kernel_size - 1) // 2 * dilation, dilation=dilation)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size, padding=(kernel_size - 1) // 2 * dilation, dilation=dilation)
+        self.relu = nn.ReLU()
+        if in_channels != out_channels:
+            self.shortcut = nn.Conv1d(in_channels, out_channels, 1)
+        else:
+            self.shortcut = nn.Identity()
+
+    def forward(self, x):
+        out = self.relu(self.conv1(x))
+        out = self.conv2(out)
+        out += self.shortcut(x)
+        out = self.relu(out)
+        return out
+
+class TCN(nn.Module):
+    def __init__(self, input_dim, num_classes):
+        super().__init__()
+        self.res1 = ResBlock(input_dim, 3, kernel_size=3, dilation=1)
+        self.res2 = ResBlock(3, 3, kernel_size=3, dilation=2)
+        self.res3 = ResBlock(3, 3, kernel_size=3, dilation=4)
+        self.res4 = ResBlock(3, 3, kernel_size=3, dilation=8)
+        self.global_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Linear(3, num_classes)
+
+    def forward(self, features, device):
+        input0 = features[0]
+        x = input0.transpose(1, 2).to(device)  # (B, C, T) -> (B, T, C)
+        x = self.res1(x)
+        x = self.res2(x)
+        x = self.res3(x)
+        x = self.res4(x)
+        x = self.global_pool(x)
+        x = x.squeeze(-1)
+        x = self.fc(x)
+        return x

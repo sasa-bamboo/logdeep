@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from logdeep.dataset.log import log_dataset
-from logdeep.dataset.sample import sliding_window, session_window
+from logdeep.dataset.sample import sliding_window, session_window, session_window_PCA_PPA
 from logdeep.tools.utils import (save_parameters, seed_everything,
                                  train_val_split)
 
@@ -53,6 +53,11 @@ class Trainer():
                                                       datatype='train')
             val_logs, val_labels = session_window(self.data_dir,
                                                   datatype='val')
+        elif self.sample == 'session_window_PCA_PPA':
+            train_logs, train_labels = session_window_PCA_PPA(self.data_dir,
+                                                               datatype='train')
+            val_logs, val_labels = session_window_PCA_PPA(self.data_dir,
+                                                           datatype='val')
         else:
             raise NotImplementedError
 
@@ -215,12 +220,12 @@ class Trainer():
 
     def start_train(self):
         for epoch in range(self.start_epoch, self.max_epoch):
-            if epoch == 0:
-                self.optimizer.param_groups[0]['lr'] /= 32
-            if epoch in [1, 2, 3, 4, 5]:
-                self.optimizer.param_groups[0]['lr'] *= 2
-            if epoch in self.lr_step:
-                self.optimizer.param_groups[0]['lr'] *= self.lr_decay_ratio
+            # if epoch == 0:
+            #     self.optimizer.param_groups[0]['lr'] /= 32
+            # if epoch in [1, 2, 3, 4, 5]:
+            #     self.optimizer.param_groups[0]['lr'] *= 2
+            # if epoch in self.lr_step:
+            #     self.optimizer.param_groups[0]['lr'] *= self.lr_decay_ratio
             self.train(epoch)
             if epoch >= self.max_epoch // 2 and epoch % 2 == 0:
                 self.valid(epoch)
